@@ -1,3 +1,4 @@
+# pyrefly: ignore [missing-import]
 import genesis as gs
 import numpy as np
 import cv2
@@ -254,8 +255,7 @@ with open("helion_v21_city_log.txt", "w") as log_file:
                     # up=(1,0,0) olduğu için resimde Y ekseni (cy) => Dünya X ekseni
                     # Resimde X ekseni (cx) => Dünya -Y ekseni
                     error_world_x = 240 - cy 
-                    error_world_y = 320 - cx
-
+                    error_world_y = cx - 320
                     
                     meters_per_pixel = 0.004 * filtered_pos[2]
                     
@@ -291,7 +291,7 @@ with open("helion_v21_city_log.txt", "w") as log_file:
                 target[2] = 0.05
                 if marker_found and detected_id == 1:
                     error_world_x = 240 - cy 
-                    error_world_y = 320 - cx
+                    error_world_y = cx - 320
                     meters_per_pixel = 0.004 * filtered_pos[2]
                     target[0] = filtered_pos[0] + (error_world_x * meters_per_pixel)
                     target[1] = filtered_pos[1] + (error_world_y * meters_per_pixel)
