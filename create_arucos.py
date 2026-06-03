@@ -30,6 +30,7 @@ def generate_aruco_urdf(marker_id, filename):
         f.write(xml)
     print(f"✅ {filename} (ID: {marker_id}) başarıyla oluşturuldu!")
 
-# ID=0 (Yön Değiştirme) ve ID=1 (İniş)
-generate_aruco_urdf(0, "aruco_turn.urdf")
+# ID=0 (Sağa Dönüş), ID=1 (İniş), ID=2 (Sola Dönüş)
+generate_aruco_urdf(0, "aruco_turn_right.urdf")
 generate_aruco_urdf(1, "aruco_land.urdf")
+generate_aruco_urdf(2, "aruco_turn_left.urdf")
