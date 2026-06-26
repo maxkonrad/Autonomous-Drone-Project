@@ -4,24 +4,22 @@ import cv2
 import time
 import random
 
-# --- 1. DONANIM VE FİZİKSEL PARAMETRELER (REAL WORLD SPEC) ---
 DRONE_MASS = 18.11 / 9.81 
 GRAVITY = 9.81
 HOVER_PWM = 1362.0
 CENTER_PWM = 1500.0
 
-BATTERY_VOLTAGE_MAX = 22.2  # 6S Tam Dolu LiPo Batarya
+BATTERY_VOLTAGE_MAX = 22.2  
 MOTOR_KV = 900.0        
 MAX_RPM = BATTERY_VOLTAGE_MAX * MOTOR_KV  
 
 C_T = 3.4618e-7
 
-TARGET_ALTITUDE = 1.5       # 🚀 Kalkış Yükseklik Hedefi (1.5 Metre)
+TARGET_ALTITUDE = 1.5
 
 MIN_RC_VALUE = 1400            
 MAX_RC_VALUE = 1600            
 
-# --- 2. SENSÖR SİMÜLATÖRÜ ---
 class SimulatedSensors:
     def __init__(self):
         self.gps_noise_std = 0.02  
@@ -35,7 +33,6 @@ class SimulatedSensors:
         noisy_z = true_pos[2] + np.random.normal(0, self.baro_noise_std) + self.z_drift
         return np.array([noisy_x, noisy_y, noisy_z])
 
-# --- 3. ALÇAK GEÇİREN FİLTRE ---
 class VectorLowPassFilter:
     def __init__(self, alpha):
         self.alpha = alpha
@@ -48,18 +45,10 @@ class VectorLowPassFilter:
             self.filtered_vector = (self.alpha * current_vector) + ((1.0 - self.alpha) * self.filtered_vector)
         return self.filtered_vector
 
-# --- 4. SİMÜLASYON VE SAHNE KURULUMU ---
 gs.init(backend=gs.cpu)
 scene = gs.Scene(show_viewer=True)
 scene.add_entity(gs.morphs.Plane(), surface=gs.surfaces.Default(color=(0.9, 0.9, 0.9))) 
 
-print("🏙️ Şehir ortamı ve ArUco markerları yerleştiriliyor...")
-
-# Marker Planı:
-#   Drone (0,0)'dan kalkar, X+ yönünde ilerler
-#   (3, 0) → ID 2 = Sola dön → Y+ yönüne geçer
-#   (3, 3) → ID 0 = Sağa dön → X+ yönüne geçer
-#   (6, 3) → ID 1 = İniş
 scene.add_entity(gs.morphs.URDF(file='aruco_turn_left.urdf', pos=(3.0, 0.0, 0.0)))
 scene.add_entity(gs.morphs.URDF(file='aruco_turn_right.urdf', pos=(3.0, 3.0, 0.0)))
 scene.add_entity(gs.morphs.URDF(file='aruco_land.urdf', pos=(6.0, 3.0, 0.0)))
@@ -80,7 +69,6 @@ drone_cam = scene.add_camera(res=(640, 480), pos=(0.0, 0.0, 1.0), lookat=(0.0, 0
 
 scene.build()
 
-# --- 5. DONANIMSAL MOTOR VE VEKTÖREL İTKİ MODELİ ---
 class SimulatedMSP:
     def apply_rc_to_physics(self, roll, pitch, throttle, true_z):
         throttle_pct = max(0.0, (throttle - 1000.0) / 1000.0)
@@ -110,7 +98,6 @@ class SimulatedMSP:
         
         return current_voltage
 
-# --- 6. PID KONTROLCÜ ---
 class PIDController:
     def __init__(self, kp, ki, kd, out_min, out_max):
         self.kp, self.ki, self.kd = kp, ki, kd
@@ -130,7 +117,6 @@ class PIDController:
     def reset_gains(self):
         self.kp, self.kd = self.orig_kp, self.orig_kd
 
-# --- 7. OTONOM UÇUŞ KONTROLCÜSÜ ---
 class AutonomousFlightController:
     def __init__(self):
         self.pid_alt = PIDController(15.0, 2.5, 40.0, -100.0, 100.0)
@@ -161,7 +147,6 @@ class AutonomousFlightController:
         
         return final_roll, final_pitch, final_throttle
 
-# Yön değiştirme fonksiyonları
 def turn_left(direction):
     mapping = {"X+": "Y+", "Y+": "X-", "X-": "Y-", "Y-": "X+"}
     return mapping[direction]
@@ -170,7 +155,6 @@ def turn_right(direction):
     mapping = {"X+": "Y-", "Y-": "X-", "X-": "Y+", "Y+": "X+"}
     return mapping[direction]
 
-# --- 8. ANA UÇUŞ DÖNGÜSÜ ---
 sensors = SimulatedSensors()
 pos_filter = VectorLowPassFilter(alpha=0.15) 
 msp_bridge = SimulatedMSP()
@@ -229,7 +213,6 @@ with open("helion_v23_city_log.txt", "w") as log_file:
                 corners, ids, rejected = detector.detectMarkers(img_bgr)
                 
                 if ids is not None:
-                    # Kamera açısına en yakın ve geçerli bir marker seç (tercihen beklenen yöndeki)
                     for idx, m_id in enumerate(ids):
                         m_id = m_id[0]
                         if m_id in [0, 1, 2, 3]:
@@ -245,15 +228,14 @@ with open("helion_v23_city_log.txt", "w") as log_file:
 
                 cv2.imshow("Drone Kamera", img_bgr)
                 cv2.waitKey(1)
-
-            # --- DİNAMİK DURUM MAKİNESİ (STATE MACHINE) ---
+-
             if mod == "KALKIS":
                 if filtered_pos[2] > TARGET_ALTITUDE - 0.2:
                     mod = "ARAMA"
                     print(f"\n🎯 {TARGET_ALTITUDE}m'ye çıkıldı. {current_direction} yönünde arama başlıyor...")
                     
             elif mod == "ARAMA":
-                lead_dist = 0.15 # v22'deki gibi hedefi biraz ileride tutarak lineer hareket et
+                lead_dist = 0.15
                 if current_direction == "X+":
                     target[0] = filtered_pos[0] + lead_dist
                 elif current_direction == "X-":
@@ -267,7 +249,6 @@ with open("helion_v23_city_log.txt", "w") as log_file:
                 
                 if marker_found and detected_id != last_processed_id:
                     print(f"\n👀 [{elapsed:.1f}s] ArUco ID {detected_id} görüldü! Hizalanıyor...")
-                    # Mevcut pozisyonda dur
                     target[0] = filtered_pos[0]
                     target[1] = filtered_pos[1]
                     mod = "HIZALANMA"
@@ -282,8 +263,6 @@ with open("helion_v23_city_log.txt", "w") as log_file:
                         marker_lost_count = 0
                         error_px = cx_px - 320
                         error_py = 240 - cy_px 
-
-                        # Drone yaw≈0 olduğu için body ≈ global
                         target[0] = filtered_pos[0] + error_py * 0.01
                         target[1] = filtered_pos[1] - error_px * 0.01
                         
